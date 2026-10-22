@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SunProof — verifiable solar RECs</title>
+<style>body{font-family:system-ui;background:#0b1220;color:#e6edf6;max-width:1000px;margin:auto;padding:20px}h1{color:#ffc83d}
+.card{background:#141d2f;border-radius:12px;padding:16px;margin:12px 0}button{background:#ffc83d;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;margin:4px}
+canvas{width:100%;background:#0e1626;border-radius:8px}code{word-break:break-all;color:#8fd3ff}.bad{color:#ff6b6b}.ok{color:#5be08a}table{width:100%;font-size:13px}label{margin-right:10px}</style></head><body>
+<h1>☀️ SunProof</h1><p>Track 2 — Renewable Energy &amp; Grid Management. Turn rooftop solar meter readings into tamper-evident Renewable Energy Certificates (RECs): hash every reading, flag impossible data, commit a Merkle root, and let anyone verify.</p>
+<p style="color:#9aa"><b>Note:</b> readings in this demo are synthetic (clear-sky model + noise), not real site data.</p>
+<div class="card"><label>Panel capacity kW <input id="cap" type="number" value="10" style="width:60px"></label><label>Days <input id="days" type="number" value="30" style="width:60px"></label>
+<label><input id="inject" type="checkbox"> inject fraud (night output + over-capacity)</label><br>
+<button onclick="gen()">1. Generate meter data</button><button onclick="audit()">2. AI/rule audit</button><button onclick="commit()">3. Commit Merkle root &amp; issue RECs</button><button onclick="tamper()">4. Tamper one reading</button><button onclick="verify()">5. Verify</button></div>
+<div class="card"><canvas id="c" width="960" height="220"></canvas></div>
+<div class="card" id="out">Press 1 to start.</div>
+<script src="app.js"></script></body></html>
