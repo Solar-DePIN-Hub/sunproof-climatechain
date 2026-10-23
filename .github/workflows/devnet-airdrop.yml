@@ -1,0 +1,30 @@
+# Requests free DEVNET test SOL for the demo fee payer (public address only, no secrets).
+name: devnet-airdrop
+on:
+  workflow_dispatch:
+    inputs:
+      address:
+        description: Devnet address to fund
+        default: 7giBnWKdqT5KAH5FLbTs58zBrDrnQC64bcj3RXpHkg7L
+permissions: {}
+jobs:
+  airdrop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request devnet airdrop
+        env:
+          ADDR: ${{ github.event.inputs.address }}
+        run: |
+          set -u
+          [[ "$ADDR" =~ ^[1-9A-HJ-NP-Za-km-z]{32,44}$ ]] || { echo bad address; exit 1; }
+          RPC=https://api.devnet.solana.com
+          call() { curl -s -X POST -H 'content-type: application/json' -d "$1" $RPC; echo; }
+          call '{"jsonrpc":"2.0","id":1,"method":"getGenesisHash"}'
+          for amt in 1000000000 500000000 100000000; do
+            r=$(call "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"requestAirdrop\",\"params\":[\"$ADDR\",$amt]}")
+            echo "airdrop $amt: $r"
+            echo "$r" | grep -q '"result"' && break
+            sleep 5
+          done
+          sleep 20
+          call "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getBalance\",\"params\":[\"$ADDR\"]}"
