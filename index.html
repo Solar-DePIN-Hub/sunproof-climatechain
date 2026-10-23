@@ -1,13 +1,38 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SunProof — verifiable solar RECs</title>
-<style>body{font-family:system-ui;background:#0b1220;color:#e6edf6;max-width:1000px;margin:auto;padding:20px}h1{color:#ffc83d}
-.card{background:#141d2f;border-radius:12px;padding:16px;margin:12px 0}button{background:#ffc83d;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;margin:4px}
-canvas{width:100%;background:#0e1626;border-radius:8px}code{word-break:break-all;color:#8fd3ff}.bad{color:#ff6b6b}.ok{color:#5be08a}table{width:100%;font-size:13px}label{margin-right:10px}</style></head><body>
-<h1>☀️ SunProof</h1><p>Track 2 — Renewable Energy &amp; Grid Management. Turn rooftop solar meter readings into tamper-evident Renewable Energy Certificates (RECs): hash every reading, flag impossible data, commit a Merkle root, and let anyone verify.</p>
-<p style="color:#9aa"><b>Note:</b> readings in this demo are synthetic (clear-sky model + noise), not real site data.</p>
-<div class="card"><label>Panel capacity kW <input id="cap" type="number" value="10" style="width:60px"></label><label>Days <input id="days" type="number" value="30" style="width:60px"></label>
-<label><input id="inject" type="checkbox"> inject fraud (night output + over-capacity)</label><br>
-<button onclick="gen()">1. Generate meter data</button><button onclick="audit()">2. AI/rule audit</button><button onclick="commit()">3. Commit Merkle root &amp; issue RECs</button><button onclick="tamper()">4. Tamper one reading</button><button onclick="verify()">5. Verify</button></div>
-<div class="card"><canvas id="c" width="960" height="220"></canvas></div>
+<meta name="description" content="SunProof turns rooftop solar meter readings into tamper-evident Renewable Energy Certificates: audit, Merkle root, no double counting.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>">
+<style>
+body{font-family:system-ui,sans-serif;background:#0b1220;color:#e6edf6;max-width:1040px;margin:auto;padding:20px;line-height:1.45}
+h1{color:#ffc83d;margin-bottom:4px}h2{font-size:16px;margin:0 0 8px;color:#ffc83d}
+.card{background:#141d2f;border-radius:12px;padding:16px;margin:12px 0}
+button{background:#ffc83d;color:#111;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;margin:4px}
+button.done{background:#5be08a}button:hover{filter:brightness(1.1)}
+input{background:#0e1626;color:#e6edf6;border:1px solid #2a3a57;border-radius:6px;padding:4px 6px}
+canvas{width:100%;background:#0e1626;border-radius:8px}code{word-break:break-all;color:#8fd3ff}
+.bad{color:#ff6b6b;font-weight:600}.ok{color:#5be08a;font-weight:600}.muted{color:#9aa7b8;font-size:13px}
+table{width:100%;font-size:13px;border-collapse:collapse;margin:6px 0}td,th{text-align:left;padding:3px 6px;border-bottom:1px solid #22304a}
+label{margin-right:12px;display:inline-block;margin-bottom:6px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.flow{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;color:#9aa7b8}.flow span{background:#0e1626;border-radius:6px;padding:4px 8px}
+</style></head><body>
+<h1>☀️ SunProof</h1>
+<p><b>Track: Renewable Energy &amp; Energy Trading</b> (renewable certificate tracking). Small rooftop solar owners make clean energy but cannot prove it cheaply. SunProof turns hourly meter readings into tamper-evident Renewable Energy Certificates (RECs): audit the data, hash every reading, commit one Merkle root, block double counting, and let anyone verify.</p>
+<div class="flow"><span>meter readings</span>→<span>audit: rules + learned baseline</span>→<span>SHA-256 Merkle root</span>→<span>1-MWh RECs + registry</span>→<span>public memo / anchor</span>→<span>anyone verifies</span></div>
+<p class="muted"><b>Note:</b> readings in this demo are synthetic (clear-sky model + random clouds), not real site data. No backend: all logic runs in your browser.</p>
+<div class="card">
+<label>Meter ID <input id="meter" value="UA-KYIV-ROOF-01" style="width:150px"></label>
+<label>Panel capacity kW <input id="cap" type="number" value="10" style="width:60px"></label>
+<label>Days <input id="days" type="number" value="30" style="width:60px"></label>
+<label>Seed <input id="seed" type="number" value="2026" style="width:70px"></label>
+<label><input id="inject" type="checkbox"> inject fraud (night output, over-capacity, wrong-hour values)</label>
+<div class="steps"><button onclick="gen()">1. Generate meter data</button><button onclick="audit()">2. Audit (rules + learned baseline)</button><button onclick="commit()">3. Commit root &amp; issue RECs</button><button onclick="tamper()">4. Tamper one reading</button><button onclick="verify()">5. Verify</button></div>
+</div>
+<div class="card"><canvas id="c" width="960" height="220"></canvas><div class="muted">Yellow = eligible readings, red = excluded by the audit, dashed line = panel capacity.</div></div>
 <div class="card" id="out">Press 1 to start.</div>
+<div class="grid">
+<div class="card"><h2>Prove one reading</h2><p class="muted">A buyer or auditor can check a single reading with a short Merkle proof, without seeing the whole dataset.</p><label>Reading # <input id="pid" type="number" value="300" style="width:80px"></label><button onclick="proveOne()">6. Prove reading</button></div>
+<div class="card"><h2>Certificate registry (demo)</h2><p class="muted">One period per meter can be certified only once. Stored in this browser; on-chain registry is the next step.</p><div id="reg"></div></div>
+</div>
+<p class="muted">Open source: <a style="color:#8fd3ff" href="https://github.com/Solar-DePIN-Hub/sunproof-climatechain">github.com/Solar-DePIN-Hub/sunproof-climatechain</a> · Built by Solar DePIN Hub (Ukraine) for the IEEE ClimateChain Global Hackathon 2026.</p>
 <script src="app.js"></script></body></html>
