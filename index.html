@@ -1,38 +1,50 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SunProof — verifiable solar RECs</title>
-<meta name="description" content="SunProof turns rooftop solar meter readings into tamper-evident Renewable Energy Certificates: audit, Merkle root, no double counting.">
+<title>SunProof — verifiable solar RECs, anchored on Solana</title>
+<meta name="description" content="SunProof audits rooftop solar meter data, commits a Merkle root on Solana devnet and issues renewable energy certificates that anyone can verify. Tested on a real household PV meter.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☀️</text></svg>">
 <style>
-body{font-family:system-ui,sans-serif;background:#0b1220;color:#e6edf6;max-width:1040px;margin:auto;padding:20px;line-height:1.45}
-h1{color:#ffc83d;margin-bottom:4px}h2{font-size:16px;margin:0 0 8px;color:#ffc83d}
+body{font-family:system-ui,sans-serif;background:#0b1220;color:#e6edf6;max-width:1080px;margin:auto;padding:20px;line-height:1.45}
+h1{color:#ffc83d;margin:0 0 4px}h2{font-size:16px;margin:0 0 8px;color:#ffc83d}
 .card{background:#141d2f;border-radius:12px;padding:16px;margin:12px 0}
 button{background:#ffc83d;color:#111;border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;margin:4px}
-button.done{background:#5be08a}button:hover{filter:brightness(1.1)}
-input{background:#0e1626;color:#e6edf6;border:1px solid #2a3a57;border-radius:6px;padding:4px 6px}
-canvas{width:100%;background:#0e1626;border-radius:8px}code{word-break:break-all;color:#8fd3ff}
+button.done{background:#5be08a}button.sec{background:#2a3a57;color:#e6edf6}button:hover{filter:brightness(1.1)}button:disabled{opacity:.5;cursor:wait}
+input,select{background:#0e1626;color:#e6edf6;border:1px solid #2a3a57;border-radius:6px;padding:4px 6px}
+canvas{width:100%;background:#0e1626;border-radius:8px}code{word-break:break-all;color:#8fd3ff}a{color:#8fd3ff}
 .bad{color:#ff6b6b;font-weight:600}.ok{color:#5be08a;font-weight:600}.muted{color:#9aa7b8;font-size:13px}
 table{width:100%;font-size:13px;border-collapse:collapse;margin:6px 0}td,th{text-align:left;padding:3px 6px;border-bottom:1px solid #22304a}
 label{margin-right:12px;display:inline-block;margin-bottom:6px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 .flow{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;color:#9aa7b8}.flow span{background:#0e1626;border-radius:6px;padding:4px 8px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:#0e1626;border-radius:8px;padding:10px}.kpi b{display:block;font-size:22px;color:#ffc83d}.kpi span{font-size:12px;color:#9aa7b8}
+.hero{border:1px solid #ffc83d55}
 </style></head><body>
 <h1>☀️ SunProof</h1>
-<p><b>Track: Renewable Energy &amp; Energy Trading</b> (renewable certificate tracking). Small rooftop solar owners make clean energy but cannot prove it cheaply. SunProof turns hourly meter readings into tamper-evident Renewable Energy Certificates (RECs): audit the data, hash every reading, commit one Merkle root, block double counting, and let anyone verify.</p>
-<div class="flow"><span>meter readings</span>→<span>audit: rules + learned baseline</span>→<span>SHA-256 Merkle root</span>→<span>1-MWh RECs + registry</span>→<span>public memo / anchor</span>→<span>anyone verifies</span></div>
-<p class="muted"><b>Note:</b> readings in this demo are synthetic (clear-sky model + random clouds), not real site data. No backend: all logic runs in your browser.</p>
+<p><b>Track: Renewable Energy &amp; Energy Trading</b> (renewable certificate tracking). Small rooftop solar owners make clean energy but cannot prove it cheaply, and buyers cannot see the data behind a green certificate. SunProof audits hourly meter data, hashes every reading into one Merkle root, anchors that root on <b>Solana (devnet)</b>, issues 1-MWh Renewable Energy Certificates (RECs) only for energy that passes the audit, blocks double counting, and lets anyone verify.</p>
+<div class="card hero"><h2>Tested on a real household solar meter</h2>
+<p style="margin:0">Open Power System Data, household PV meter <b>residential3</b> (Konstanz, Germany), April 2017: the raw series reports <b>885.2 kWh</b>, but <b>631.1 kWh (71%)</b> of it was gap-filled by the data publisher, not measured. <b>Without using the publisher's flags</b>, SunProof's audit held back <b>603.1 kWh — 96% of the unmeasured energy</b> — and flagged <b>0 measured hours</b>. On a clean control month (residential4, June 2017, 1,570.9 kWh) it flagged <b>nothing</b>. Pick "Real data" below to reproduce it.</p></div>
+<div class="flow"><span>meter readings</span>→<span>audit: physics + learned baseline + replay check + satellite cross-check</span>→<span>SHA-256 Merkle root</span>→<span>Solana devnet memo tx</span>→<span>1-MWh RECs, no double counting</span>→<span>anyone verifies</span></div>
 <div class="card">
-<label>Meter ID <input id="meter" value="UA-KYIV-ROOF-01" style="width:150px"></label>
-<label>Panel capacity kW <input id="cap" type="number" value="10" style="width:60px"></label>
-<label>Days <input id="days" type="number" value="30" style="width:60px"></label>
-<label>Seed <input id="seed" type="number" value="2026" style="width:70px"></label>
-<label><input id="inject" type="checkbox"> inject fraud (night output, over-capacity, wrong-hour values)</label>
-<div class="steps"><button onclick="gen()">1. Generate meter data</button><button onclick="audit()">2. Audit (rules + learned baseline)</button><button onclick="commit()">3. Commit root &amp; issue RECs</button><button onclick="tamper()">4. Tamper one reading</button><button onclick="verify()">5. Verify</button></div>
+<label>Data <select id="mode">
+<option value="opsd-res3-2017-04">Real: OPSD household PV, residential3, April 2017 (raw, has a logging gap)</option>
+<option value="opsd-res4-2017-06">Real: OPSD household PV, residential4, June 2017 (clean control)</option>
+<option value="synthetic">Synthetic demo (Kyiv rooftop, optional fraud injection)</option>
+<option value="csv">Your meter: upload CSV (timestamp,kWh)</option>
+</select></label>
+<span id="synthOpts"><label><input id="inject" type="checkbox" checked> inject fraud (night output, over-capacity, wrong-hour value, replayed day)</label><label>Seed <input id="seed" type="number" value="2026" style="width:70px"></label><label>Days <input id="days" type="number" value="30" style="width:55px"></label></span>
+<span id="csvOpts" style="display:none"><input id="csv" type="file" accept=".csv,text/csv"></span>
+<span id="realOpts"><label><input id="useFlags" type="checkbox"> also use the publisher's "gap-filled" flags (off = blind audit)</label></span>
+<br><label>Meter ID <input id="meter" style="width:230px"></label>
+<label>Capacity kW <input id="cap" type="number" step="0.01" style="width:70px"></label>
+<label>Lat <input id="lat" type="number" step="0.01" style="width:70px"></label><label>Lon <input id="lon" type="number" step="0.01" style="width:70px"></label>
+<div id="src" class="muted"></div>
+<div class="steps"><button onclick="load()">1. Load meter data</button><button onclick="runAudit()">2. Audit</button><button onclick="commit()">3. Merkle root &amp; RECs</button><button id="anchorBtn" onclick="anchor()">4. Anchor on Solana devnet</button><button onclick="tamper()">5. Tamper one reading</button><button onclick="verify()">6. Verify against chain</button></div>
 </div>
-<div class="card"><canvas id="c" width="960" height="220"></canvas><div class="muted">Yellow = eligible readings, red = excluded by the audit, dashed line = panel capacity.</div></div>
+<div class="card"><canvas id="c" width="1000" height="230"></canvas><div class="muted">Yellow = eligible readings, red = held back by the audit, dashed blue = capacity limit, green line = output expected from satellite irradiance (real data only).</div></div>
 <div class="card" id="out">Press 1 to start.</div>
 <div class="grid">
-<div class="card"><h2>Prove one reading</h2><p class="muted">A buyer or auditor can check a single reading with a short Merkle proof, without seeing the whole dataset.</p><label>Reading # <input id="pid" type="number" value="300" style="width:80px"></label><button onclick="proveOne()">6. Prove reading</button></div>
-<div class="card"><h2>Certificate registry (demo)</h2><p class="muted">One period per meter can be certified only once. Stored in this browser; on-chain registry is the next step.</p><div id="reg"></div></div>
+<div class="card"><h2>Prove one reading</h2><p class="muted">A buyer or auditor checks a single reading with a short Merkle proof, without downloading the whole dataset.</p><label>Reading # <input id="pid" type="number" value="300" style="width:80px"></label><button onclick="proveOne()">Prove reading</button><div id="proof"></div></div>
+<div class="card"><h2>On-chain registry (Solana devnet)</h2><p class="muted">Every certificate is a Memo-program transaction signed by the SunProof issuer key. A second certificate for an overlapping meter + period is refused, so the same energy cannot be sold twice.</p><div id="reg">Loading…</div></div>
 </div>
-<p class="muted">Open source: <a style="color:#8fd3ff" href="https://github.com/Solar-DePIN-Hub/sunproof-climatechain">github.com/Solar-DePIN-Hub/sunproof-climatechain</a> · Built by Solar DePIN Hub (Ukraine) for the IEEE ClimateChain Global Hackathon 2026.</p>
-<script src="app.js"></script></body></html>
+<p class="muted">Data: Open Power System Data — Household Data (v2020-04-15, CoSSMic project), CC BY 4.0 · Satellite: PVGIS 5.2 © European Union, JRC (PVGIS-SARAH2). Devnet only: no real money. Open source (MIT): <a href="https://github.com/Solar-DePIN-Hub/sunproof-climatechain">github.com/Solar-DePIN-Hub/sunproof-climatechain</a> · Built by Solar DePIN Hub (Ukraine) for the IEEE ClimateChain Global Hackathon 2026.</p>
+<script src="audit.js"></script><script src="app.js"></script></body></html>
