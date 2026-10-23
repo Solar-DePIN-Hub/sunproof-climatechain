@@ -27,6 +27,13 @@ node tools/verify.js 2AgDpp8Wqq4rEu4KcewaM74BZaTZ3vib3UjGrPr9pMjTDe8cJFBomRn4uA3
 # reads the memo from devnet, recomputes the root from data/opsd-res3-2017-04.json → ✔ MATCH
 ```
 
+## For judges: 2-minute check
+
+1. Open https://sunproof-climatechain.vercel.app. It loads the real April 2017 meter. Press **1 → 2**: 603.1 kWh held back, 0 measured hours flagged.
+2. Press **3 → 4**: the anchor is refused as double counting and links the existing devnet transaction. Press **6**: ✔ matches the chain.
+3. Press **5 → 6**: one reading changed by 0.5 kWh, ✘ mismatch.
+4. Locally: `node --test` reproduces every number in the table above from `data/` (6 tests, no network, no dependencies). `node tools/verify.js <signature>` checks the issuer signature, the devnet genesis hash and the root without our server.
+
 ## How it works
 
 ```
@@ -50,7 +57,10 @@ hourly meter readings (real CSV, OPSD dataset, or synthetic demo)
 
 Plain HTML + JavaScript (no build), Web Crypto SHA-256, Canvas. `audit.js` is shared by the browser and Node. Three Vercel serverless functions (`api/anchor`, `api/tx`, `api/registry`) build, sign (Node Ed25519) and send a legacy Solana transaction with one Memo-program instruction — no SDK dependencies. Every call first checks the devnet genesis hash and refuses any other cluster. The issuer key lives only in a Vercel secret.
 
-## Run
+## Run and test
+
+`node --test` runs the test suite (Node 18+): it re-audits both real months blind, checks 603.1 kWh / 96% / 0 false flags and the clean control, recomputes both on-chain Merkle roots, checks that a 0.5 kWh change breaks the root, and checks the solar-position night rule.
+
 
 Open the live demo, or serve the folder (`python3 -m http.server`) — audit, Merkle root and proofs work offline; anchoring needs the Vercel functions.
 

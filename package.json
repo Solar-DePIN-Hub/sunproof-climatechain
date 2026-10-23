@@ -1,0 +1,11 @@
+{
+  "name": "sunproof-climatechain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Verifiable solar RECs: meter-data audit, Merkle root anchored on Solana devnet, no double counting",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "verify": "node tools/verify.js"
+  }
+}
